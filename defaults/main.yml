@@ -1,0 +1,8 @@
+---
+# defaults file for disktest
+fio_test_file_size: "512M"
+fio_block_size: "1M"
+fio_runtime: 30
+fio_numjobs: 1
+fio_ioengine: "libaio"
+

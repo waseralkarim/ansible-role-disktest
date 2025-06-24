@@ -1,0 +1,72 @@
+---
+# tasks file for disktest
+- name: Install fio
+  apt:
+    name: fio
+    state: present
+    update_cache: yes
+
+- name: Run Sequential Write Test
+  command: >
+    fio --name=seq_write
+        --ioengine={{ fio_ioengine }}
+        --rw=write
+        --bs={{ fio_block_size }}
+        --size={{ fio_test_file_size }}
+        --numjobs={{ fio_numjobs }}
+        --runtime={{ fio_runtime }}
+        --group_reporting
+        --output-format=json
+  register: write_test
+  args:
+    chdir: /tmp
+  ignore_errors: yes
+
+- name: Parse Write Test JSON Output
+  set_fact:
+    write_result: "{{ write_test.stdout | from_json }}"
+
+- name: Show Write Test Result
+  debug:
+    msg: |
+      Sequential Write Test Results:
+      - Bandwidth: {{ write_result.jobs[0].write.bw | round(2) }} MiB/s ({{ (write_result.jobs[0].write.bw * 1.048576) | round(2) }} MB/s)
+      - IOPS: {{ write_result.jobs[0].write.iops | round(2) }}
+      - Latency (avg): {{ write_result.jobs[0].write.lat_ns.mean | round(2) }} ns
+      - Runtime: {{ write_result.jobs[0].write.runtime }} ms
+      {% if write_result.jobs[0].write.iodepth_levels is defined %}
+      - IO Depth (1): {{ write_result.jobs[0].write.iodepth_levels[0] }}%
+      {% endif %}
+
+- name: Run Sequential Read Test
+  command: >
+    fio --name=seq_read
+        --ioengine={{ fio_ioengine }}
+        --rw=read
+        --bs={{ fio_block_size }}
+        --size={{ fio_test_file_size }}
+        --numjobs={{ fio_numjobs }}
+        --runtime={{ fio_runtime }}
+        --group_reporting
+        --output-format=json
+  register: read_test
+  args:
+    chdir: /tmp
+  ignore_errors: yes
+
+- name: Parse Read Test JSON Output
+  set_fact:
+    read_result: "{{ read_test.stdout | from_json }}"
+
+- name: Show Read Test Result
+  debug:
+    msg: |
+      Sequential Read Test Results:
+      - Bandwidth: {{ read_result.jobs[0].read.bw | round(2) }} MiB/s ({{ (read_result.jobs[0].read.bw * 1.048576) | round(2) }} MB/s)
+      - IOPS: {{ read_result.jobs[0].read.iops | round(2) }}
+      - Latency (avg): {{ read_result.jobs[0].read.lat_ns.mean | round(2) }} ns
+      - Runtime: {{ read_result.jobs[0].read.runtime }} ms
+      {% if read_result.jobs[0].read.iodepth_levels is defined %}
+      - IO Depth (1): {{ read_result.jobs[0].read.iodepth_levels[0] }}%
+      {% endif %}
+
